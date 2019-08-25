@@ -1,0 +1,15 @@
+name: FIXME
+version: FIXME
+origin: FIXME
+comment: FIXME
+www: FIXME
+maintainer: FIXME
+prefix: /usr/local
+desc: <<EOD
+   FIXME 
+EOD
+deps: {
+{% for dep in deps %}
+    {{dep.name}}: {origin: {{dep.origin}}, version: {{dep.version}}},
+{% endfor %}
+}
