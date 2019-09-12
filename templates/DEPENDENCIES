@@ -9,7 +9,7 @@ desc: <<EOD
    FIXME 
 EOD
 deps: {
-{% for dep in deps %}
-    {{dep.name}}: {origin: {{dep.origin}}, version: {{dep.version}}},
-{% endfor %}
+{% for k,v in deps.items() %}
+    {{ k }}: {{ v|safe }}
+{%- endfor %}
 }
