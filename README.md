@@ -2,6 +2,8 @@
 
 Build applications using Python and ZFS
 
+When Pkgbase is released, can also be used for building ZFS Boot Environments.
+
 ## Create a template
 
 A ZFS dataset is created using the base files from FreeBSD. You can change the FreeBSD version in the settings. The files are updated to the latest patch version. 
