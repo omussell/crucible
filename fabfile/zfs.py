@@ -31,7 +31,7 @@ def dataset_get(c, dataset=None):
 @task
 def dataset_create(c, dataset):
     """Create a new dataset."""
-    c.run(f"zfs create {dataset}")
+    c.run(f"zfs create -p {dataset}")
 
 
 # snapshot
@@ -70,7 +70,7 @@ def clone_get_snapshot(c, name):
 
 # replication (send/recv)
 @task
-def replicate_send(c, filesystem, snapshot, destination_host, destination_zpool, destination_filesystem)
+def replicate_send(c, filesystem, snapshot, destination_host, destination_zpool, destination_filesystem):
     c.run(f"zfs send {filesystem}@{snapshot} | ssh {destination_host} zfs recv {destination_zpool}/{destination_filesystem}")
     # are we sending the pkg package or the zfs snapshot?
     "zfs send pool/fs@snap | gzip > backupfile.gz"

@@ -1,34 +1,79 @@
-## DEPENDENCIES 
-#name: FIXME
-#version: FIXME
-#origin: FIXME
-#comment: FIXME
-#www: FIXME
-#maintainer: FIXME
-#prefix: /usr/local
-#desc: <<EOD
-#   FIXME 
-#EOD
-#deps: {
-#{% for k,v in deps.items() %}
-#    {{ k }}: {{ v|safe }}
-#{%- endfor %}
-#}
+from fabric import task
+import requests
+import subprocess
+from pathlib import Path
+from shutil import copyfile
 
+@task
+def base_template_create(c, freebsdversion):
+    """Create a new base template."""
 
-jail_conf = f"""
-interface = "re0";
-host.hostname = "$name";
-ip4.addr = 192.168.1.$ip;
-path = "/usr/local/jails/$name";
+    jails_mount = '/usr/local/jails'
+    url = f"https://download.freebsd.org/ftp/releases/amd64/amd64/{freebsdversion}-RELEASE/base.txz"
+    base_file = f"{jails_mount}/base-{url.split('/')[-2]}.txz"
+    template_mount = f"{jails_mount}/base-{freebsdversion}"
+    pkg_prefix = "env ASSUME_ALWAYS_YES=YES pkg -r {template_mount}"
 
-exec.start = "/bin/sh /etc/rc";
-exec.stop = "/bin/sh /etc/rc.shutdown";
-exec.clean;
-#mount.devfs;
+    def download_base_file(url, base_file):
+        r = requests.get(url, stream=True)
+        
+        # download base.txz if not already exists
+        if not Path(base_file).is_file():
+            with open(base_file, 'wb') as fd:
+                chunk_size = 1024 * 1024
+                for chunk in r.iter_content(chunk_size):
+                    fd.write(chunk)
+    
+    def extract_base_to_template(template_mount, base_file):
+        with tarfile.open(base_file) as tar:
+            tar.extractall(path=template_mount)
+    
+    def patch_base(template_mount):
+        # update to latest patch version
+        subprocess.run(['freebsd-update', '-b', template_mount, '--not-running-from-cron', 'fetch', 'install'], stdout=subprocess.DEVNULL)
 
-# Jail Definitions
-{jailname} {
-    $ip = {jailip};
-}
-"""
+    def copy_files_from_host(template_mount):
+        host_files = [
+        # To allow DNS resolution within jail
+            "/etc/resolv.conf",
+        # Without these files some package installs may fail (like puppet)
+            "/etc/passwd",
+            "/etc/group",
+        ]
+        for host_file in host_files:
+            copyfile(host_file, f"{template_mount}/{host_file}")
+
+    def custom_files(template_mount):
+        rc_conf_content = """
+            sendmail_enable="NO"
+            sendmail_submit_enable="NO"
+            sendmail_outbound_enable="NO"
+            sendmail_msp_queue_enable="NO"
+        """
+        with open(f"{template_mount}/etc/rc.conf", "w") as rc_conf:
+            rc_conf.write(rc_conf_content)
+
+    def bootstrap_pkg():
+        subprocess.run([pkg_prefix, "install", "-y", "pkg"])
+
+    def bootstrap_puppet():
+        subprocess.run([pkg_prefix, "install", "-y", "puppet5"])
+
+    def install_pkg_deps():
+        install_packages = [
+            "git-lite",
+            "htop",
+            "bash",
+        ]
+        for package in install_packages:
+            f"{pkg_prefix} install -y {package}"
+
+    c.run(f"zfs create -p -o mountpoint={jails_mount}/template-{freebsdversion} tank/jails/template-{freebsdversion}")
+    download_base_file(url, base_file)
+    extract_base_to_template(template_mount, base_file)
+    patch_base(template_mount)
+    copy_files_from_host(template_mount)
+    custom_files(template_mount)
+    bootstrap_pkg()
+    bootstrap_puppet()
+    install_pkg_deps()

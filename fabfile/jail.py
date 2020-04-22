@@ -41,3 +41,23 @@ def jail_start(c, name=None):
 #    print('wtf')
 #    #c.run(f"jls")
 #    c.run(f"jail -c {name}")
+
+
+
+
+#jail_conf = f"""
+#interface = "re0";
+#host.hostname = "$name";
+#ip4.addr = 192.168.1.$ip;
+#path = "/usr/local/jails/$name";
+#
+#exec.start = "/bin/sh /etc/rc";
+#exec.stop = "/bin/sh /etc/rc.shutdown";
+#exec.clean;
+##mount.devfs;
+#
+## Jail Definitions
+#{jailname} {
+#    $ip = {jailip};
+#}
+#"""
