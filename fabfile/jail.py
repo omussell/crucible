@@ -71,13 +71,13 @@ def jail_start(c, name):
     c.sudo(f"jail -q -f {jails_mount}/conf/jail.{name}.conf -c {name}")
 
 @task
-def jail_create(c, name, clone_dataset, snapshot):
+def jail_create(c, name, clonedataset, snapshot):
 
     # Jail names cant have "." characters or be uppercase
     name = name.replace(".", "-").lower()
 
     create_jail_conf(c, name)
-    zfs.clone_create(c, clone_dataset, snapshot, f"tank/jails/{name}")
+    zfs.clone_create(c, clonedataset, snapshot, f"tank/jails/{name}")
     jail_start(c, name)
 
 

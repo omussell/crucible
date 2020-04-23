@@ -62,9 +62,9 @@ def snapshot_destroy(c, dataset, name):
 #    print("get")
 
 @task
-def clone_create(c, clone_dataset, snapshot, new_clone):
+def clone_create(c, clonedataset, snapshot, newclone):
     """Create a clone from a snapshot."""
-    c.run(f"zfs clone {clone_dataset}@{snapshot} {new_clone}")
+    c.run(f"zfs clone {clonedataset}@{snapshot} {newclone}")
 
 
 @task
