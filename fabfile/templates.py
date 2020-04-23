@@ -12,7 +12,7 @@ def base_template_create(c, freebsdversion):
     jails_mount = '/usr/local/jails'
     url = f"https://download.freebsd.org/ftp/releases/amd64/amd64/{freebsdversion}-RELEASE/base.txz"
     base_file = f"{jails_mount}/base-{url.split('/')[-2]}.txz"
-    template_mount = f"{jails_mount}/base-{freebsdversion}"
+    template_mount = f"{jails_mount}/template-{freebsdversion}"
     pkg_prefix = f"env ASSUME_ALWAYS_YES=YES pkg -r {template_mount}"
 
     def download_base_file(url, base_file):
@@ -61,11 +61,11 @@ def base_template_create(c, freebsdversion):
 
     def bootstrap_pkg():
         print("Bootstrapping pkg")
-        subprocess.run([pkg_prefix, "install", "-y", "pkg"])
+        subprocess.run(f"{pkg_prefix} install -qy pkg", shell=True)
 
     def bootstrap_puppet():
         print("Bootstrapping puppet")
-        subprocess.run([pkg_prefix, "install", "-y", "puppet5"])
+        subprocess.run(f"{pkg_prefix} install -qy puppet5", shell=True)
 
     def install_pkg_deps():
         print("Installing package dependencies")
@@ -75,10 +75,10 @@ def base_template_create(c, freebsdversion):
             "bash",
         ]
         for package in install_packages:
-            f"{pkg_prefix} install -y {package}"
+            subprocess.run([f"{pkg_prefix} install -qy {package}"], shell=True)
 
     print("Creating template dataset")
-    c.run(f"zfs create -p -o mountpoint={jails_mount}/template-{freebsdversion} tank/jails/template-{freebsdversion}")
+    c.run(f"zfs create -p -o mountpoint={template_mount} tank/jails/template-{freebsdversion}")
     download_base_file(url, base_file)
     extract_base_to_template(template_mount, base_file)
     patch_base(template_mount)
