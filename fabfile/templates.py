@@ -28,8 +28,9 @@ def base_template_create(c, freebsdversion):
     
     def extract_base_to_template(template_mount, base_file):
         print("Extracting base file")
-        with tarfile.open(base_file) as tar:
-            tar.extractall(path=template_mount)
+        if not Path(f"{template_mount}/root").is_dir():
+            with tarfile.open(base_file) as tar:
+                tar.extractall(path=template_mount)
     
     def patch_base(template_mount):
         print("Patching base template")
@@ -75,7 +76,7 @@ def base_template_create(c, freebsdversion):
             "bash",
         ]
         for package in install_packages:
-            subprocess.run([f"{pkg_prefix} install -qy {package}"], shell=True)
+            subprocess.run(f"{pkg_prefix} install -qy {package}", shell=True)
 
     print("Creating template dataset")
     c.run(f"zfs create -p -o mountpoint={template_mount} tank/jails/template-{freebsdversion}")
