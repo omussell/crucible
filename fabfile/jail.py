@@ -68,7 +68,8 @@ host.hostname = $name;
 def jail_start(c, name):
     """Start jail(s)."""
     jails_mount = "/usr/local/jails"
-    c.sudo(f"jail -q -f {jails_mount}/conf/jail.{name}.conf -c {name}")
+    #c.sudo(f"jail -q -f {jails_mount}/conf/jail.{name}.conf -c {name}")
+    c.run(f"jail -q -f {jails_mount}/conf/jail.{name}.conf -c {name}")
 
 @task
 def jail_create(c, name, clonedataset, snapshot):
