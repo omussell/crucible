@@ -25,7 +25,7 @@ from fabfile import zfs
 ## jail
 
 @task
-def create_jail_ip(name):
+def create_jail_ip(c, name):
     # Convert name to bytestring so it can be used with random.seed
     byte_name = name.encode('UTF-8')
     # Create hash of name for use as a different seed. Otherwise both numbers are the same or close
@@ -38,8 +38,10 @@ def create_jail_ip(name):
 
     return f"192.168.{ip1}.{ip2}"
 
-def create_jail_conf(name):
-    jail_ip = create_jail_ip(name)
+@task
+def create_jail_conf(c, name):
+    jails_mount = "/usr/local/jails"
+    jail_ip = create_jail_ip(c, name)
     jail_conf_template = f"""
 exec.prestart = "";
 exec.start = "/bin/sh /etc/rc";
@@ -65,7 +67,8 @@ host.hostname = $name;
 @task
 def jail_start(c, name):
     """Start jail(s)."""
-    c.sudo(f"jail -q -f /etc/jail.conf -c {name}")
+    jails_mount = "/usr/local/jails"
+    c.sudo(f"jail -q -f {jails_mount}/conf/jail.{name}.conf -c {name}")
 
 @task
 def jail_create(c, name, clone_dataset, snapshot):
@@ -73,7 +76,7 @@ def jail_create(c, name, clone_dataset, snapshot):
     # Jail names cant have "." characters or be uppercase
     name = name.replace(".", "-").lower()
 
-    create_jail_conf(name)
+    create_jail_conf(c, name)
     zfs.clone_create(c, clone_dataset, snapshot, f"tank/jails/{name}")
     jail_start(c, name)
 
