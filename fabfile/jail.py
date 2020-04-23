@@ -56,11 +56,11 @@ interface="lo1";
 host.hostname = $name;
 
 {name} {{ ip4.addr = {jail_ip}; }}
-   """
-   jail_conf_path = Path(f"{jails_mount}/conf")
-   jail_conf_path.mkdir(parents=True, exist_ok=True)
-   with open(f"{jail_conf_path}/jail.{name}.conf", "w") as jail_conf:
-       jail_conf.write(jail_conf_template)
+    """
+    jail_conf_path = Path(f"{jails_mount}/conf")
+    jail_conf_path.mkdir(parents=True, exist_ok=True)
+    with open(f"{jail_conf_path}/jail.{name}.conf", "w") as jail_conf:
+        jail_conf.write(jail_conf_template)
 
 @task
 def jail_start(c, name):
