@@ -55,6 +55,11 @@ def snapshot_destroy(c, dataset, name):
     """Destroy a snapshot."""
     c.run(f"zfs destroy {dataset}@{name}")
 
+@task
+def snapshot_get_latest(c, dataset):
+    """Get the most recently created snapshot."""
+    c.run(f"zfs list -t snapshot -o name,creation -s creation -r {dataset} | tail -1")
+
 
 # clone
 #@task
@@ -62,9 +67,10 @@ def snapshot_destroy(c, dataset, name):
 #    print("get")
 
 @task
-def clone_create(c, clonedataset, snapshot, newclone):
+def clone_create(c, clonedataset, newclone):
     """Create a clone from a snapshot."""
-    c.run(f"zfs clone {clonedataset}@{snapshot} {newclone}")
+    dataset = snapshot_get_latest(c, clonedataset)
+    c.run(f"zfs clone {dataset} {newclone}")
 
 
 @task
@@ -75,7 +81,11 @@ def clone_get_snapshot(c, name):
 
 # replication (send/recv)
 @task
-def replicate_send(c, filesystem, snapshot, destination_host, destination_zpool, destination_filesystem):
-    c.run(f"zfs send {filesystem}@{snapshot} | ssh {destination_host} zfs recv {destination_zpool}/{destination_filesystem}")
-    # are we sending the pkg package or the zfs snapshot?
-    "zfs send pool/fs@snap | gzip > backupfile.gz"
+def replicate_send_remote(c, dataset, snapshot, destination_host, destination_zpool, destination_filesystem):
+    c.run(f"zfs send {dataset}@{snapshot} | ssh {destination_host} zfs recv {destination_zpool}/{destination_filesystem}")
+
+@task 
+def replicate_send_file(c, dataset, filename):
+    snapshot_create(c, dataset, "zfssend")
+    c.run(f"zfs send {dataset}@{snapshot} | gzip > {filename}.gz")
+    snapshot_destroy(c, dataset, "zfssend")
