@@ -6,24 +6,6 @@ from pathlib import Path
 from fabfile import zfs
 
 
-#@task
-#def get(c):
-#    print("get ze jails")
-#
-#
-## directory subtree
-## hostname
-## ip address
-#
-## start
-## stop
-## restart
-#
-## template
-#
-#
-## jail
-
 @task
 def create_jail_ip(c, name):
     # Convert name to bytestring so it can be used with random.seed
@@ -65,19 +47,50 @@ host.hostname = $name;
         jail_conf.write(jail_conf_template)
 
 @task
-def jail_start(c, name):
+def local_jail_start(c, name):
     """Start jail(s)."""
     jails_mount = "/usr/local/jails"
     c.run(f"jail -q -f {jails_mount}/conf/jail.{name}.conf -c {name}")
 
 @task
-def jail_create(c, name, clonedataset, snapshot):
+def remote_jail_start(c, name):
+    """Start jail(s)."""
+    jails_mount = "/usr/local/jails"
+    c.sudo(f"jail -q -f {jails_mount}/conf/jail.{name}.conf -c {name}")
+
+@task
+def local_jail_name(c, app, ver):
+    clean_ver = ver.replace(".", "-").lower()
+    jail_name = f"{app}-{clean_ver}"
+
+@task
+def remote_jail_name(c, app, env, ver):
+    hostname = socket.gethostname()
+    clean_ver = ver.replace(".", "-").lower()
+    jail_name = f"{hostname}-jail-{app}-{clean_ver}"
+    return jail_name
+
+@task
+def local_jail_create(c, clonedataset, app, ver):
+
+    # Jail names cant have "." characters or be uppercase
+    name = local_jail_name(c, app, ver)
+    latest_snapshot = zfs.snapshot_get_latest(c, clonedataset)
+    dataset = latest_snapshot.split('@')[0]
+    snapshot = latest_snapshot.split('@')[1]
+
+    create_jail_conf(c, name)
+    zfs.clone_create(c, dataset, snapshot, f"tank/jails/{name}")
+    jail_start(c, name)
+
+@task
+def remote_jail_create(c, name):
 
     # Jail names cant have "." characters or be uppercase
     name = name.replace(".", "-").lower()
 
+    ## download built jail
     create_jail_conf(c, name)
-    zfs.clone_create(c, clonedataset, snapshot, f"tank/jails/{name}")
     jail_start(c, name)
 
 
