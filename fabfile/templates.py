@@ -1,9 +1,11 @@
-from fabric import task
-import requests
 import subprocess
+import tarfile
 from pathlib import Path
 from shutil import copyfile
-import tarfile
+
+import requests
+from fabric import task
+
 
 @task
 def base_template_create(c, freebsdversion):
@@ -17,7 +19,7 @@ def base_template_create(c, freebsdversion):
 
     def download_base_file(url, base_file):
         r = requests.get(url, stream=True)
-        
+
         print("Downloading base file")
         # download base.txz if not already exists
         if not Path(base_file).is_file():
@@ -25,13 +27,13 @@ def base_template_create(c, freebsdversion):
                 chunk_size = 1024 * 1024
                 for chunk in r.iter_content(chunk_size):
                     fd.write(chunk)
-    
+
     def extract_base_to_template(template_mount, base_file):
         print("Extracting base file")
         if not Path(f"{template_mount}/root").is_dir():
             with tarfile.open(base_file) as tar:
                 tar.extractall(path=template_mount)
-    
+
     def patch_base(template_mount):
         print("Patching base template")
         # update to latest patch version
@@ -79,7 +81,7 @@ def base_template_create(c, freebsdversion):
             subprocess.run(f"{pkg_prefix} install -qy {package}", shell=True)
 
     print("Creating template dataset")
-    c.run(f"zfs create -p -o mountpoint={template_mount} tank/jails/template-{freebsdversion}")
+    c.run(f"zfs create -p -o mountpoint={template_mount} tank/jails/template-{freebsdversion}", shell='/bin/sh')
     download_base_file(url, base_file)
     extract_base_to_template(template_mount, base_file)
     patch_base(template_mount)
