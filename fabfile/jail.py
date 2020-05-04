@@ -5,6 +5,10 @@ import socket
 from pathlib import Path
 from fabfile import zfs
 
+# Local means fabric is being run with the intention of creating jails locally like on BuildBot
+# Remote means fabric is connecting via SSH to another server and starting jails there
+
+jails_mount = "/usr/local/jails"
 
 @task
 def create_jail_ip(c, name):
@@ -21,8 +25,7 @@ def create_jail_ip(c, name):
     return f"192.168.{ip1}.{ip2}"
 
 @task
-def create_jail_conf(c, name):
-    jails_mount = "/usr/local/jails"
+def create_jail_conf_template(c, name):
     jail_ip = create_jail_ip(c, name)
     jail_conf_template = f"""
 exec.prestart = "";
@@ -33,18 +36,48 @@ exec.stop = "/bin/sh /etc/rc.shutdown";
 exec.poststop = "";
 exec.clean;
 #mount.devfs;
-path = "/usr/local/jails/$name";
+path = "{jails_mount}/$name";
 interface="lo1";
 #allow.mount;
 #allow.mount.devfs;
 host.hostname = $name;
 
 {name} {{ ip4.addr = {jail_ip}; }}
-    """
+"""
+    return jail_conf_template
+
+
+@task
+def local_create_jail_conf(c, name):
+    jail_conf_template = create_jail_conf_template(c, name)
     jail_conf_path = Path(f"{jails_mount}/conf")
     jail_conf_path.mkdir(parents=True, exist_ok=True)
     with open(f"{jail_conf_path}/jail.{name}.conf", "w") as jail_conf:
         jail_conf.write(jail_conf_template)
+
+@task
+def remote_create_jail_conf(c, name):
+    jail_conf_template = create_jail_conf_template(c, name)
+    #jail_conf_path = Path(f"{jails_mount}/conf")
+    #jail_conf_path.mkdir(parents=True, exist_ok=True)
+    with open(f"jail.{name}.conf", "w") as jail_conf:
+        jail_conf.write(jail_conf_template)
+    c.put(jail_conf, remote=f"{jails_mount}/conf/jail.{name}.conf")
+    Path(f"jail.{name}.conf").unlink()
+
+@task
+def local_jail_name(c, app, ver):
+    # Jail names cant have "." characters or be uppercase
+    clean_ver = ver.replace(".", "-").lower()
+    jail_name = f"{app}-{clean_ver}"
+
+@task
+def remote_jail_name(c, app, env, ver):
+    hostname = c.run("hostname -s").stdout.strip("\n")
+    # Jail names cant have "." characters or be uppercase
+    clean_ver = ver.replace(".", "-").lower()
+    jail_name = f"{hostname}-jail-{app}-{clean_ver}"
+    return jail_name
 
 @task
 def local_jail_start(c, name):
@@ -58,22 +91,10 @@ def remote_jail_start(c, name):
     jails_mount = "/usr/local/jails"
     c.sudo(f"jail -q -f {jails_mount}/conf/jail.{name}.conf -c {name}")
 
-@task
-def local_jail_name(c, app, ver):
-    clean_ver = ver.replace(".", "-").lower()
-    jail_name = f"{app}-{clean_ver}"
-
-@task
-def remote_jail_name(c, app, env, ver):
-    hostname = socket.gethostname()
-    clean_ver = ver.replace(".", "-").lower()
-    jail_name = f"{hostname}-jail-{app}-{clean_ver}"
-    return jail_name
 
 @task
 def local_jail_create(c, clonedataset, app, ver):
 
-    # Jail names cant have "." characters or be uppercase
     name = local_jail_name(c, app, ver)
     latest_snapshot = zfs.snapshot_get_latest(c, clonedataset)
     dataset = latest_snapshot.split('@')[0]
@@ -81,17 +102,16 @@ def local_jail_create(c, clonedataset, app, ver):
 
     create_jail_conf(c, name)
     zfs.clone_create(c, dataset, snapshot, f"tank/jails/{name}")
-    jail_start(c, name)
+    local_jail_start(c, name)
 
 @task
-def remote_jail_create(c, name):
+def remote_jail_create(c, app, env, ver):
 
-    # Jail names cant have "." characters or be uppercase
-    name = name.replace(".", "-").lower()
+    name = remote_jail_name(c, app, env, ver)
 
     ## download built jail
-    create_jail_conf(c, name)
-    jail_start(c, name)
+    remote_create_jail_conf(c, name)
+    remote_jail_start(c, name)
 
 
 @task(optional=["name"])
@@ -101,32 +121,3 @@ def jail_get(c, name=None):
         c.run(f"jls -j {name} name")
     else:
         c.run("jls")
-
-#
-#
-#@task
-#def jail_start(c, jail_conf=str, name=str):
-#    """Start a jail."""
-#    print('wtf')
-#    #c.run(f"jls")
-#    c.run(f"jail -c {name}")
-
-
-
-
-#jail_conf = f"""
-#interface = "re0";
-#host.hostname = "$name";
-#ip4.addr = 192.168.1.$ip;
-#path = "/usr/local/jails/$name";
-#
-#exec.start = "/bin/sh /etc/rc";
-#exec.stop = "/bin/sh /etc/rc.shutdown";
-#exec.clean;
-##mount.devfs;
-#
-## Jail Definitions
-#{jailname} {
-#    $ip = {jailip};
-#}
-#"""
