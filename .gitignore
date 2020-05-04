@@ -108,3 +108,7 @@ venv.bak/
 # Vagrant
 .vagrant/
 *.vdi
+
+# VS Code
+.vscode/
+

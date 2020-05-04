@@ -10,12 +10,20 @@ if test -z "`grep 'source .virtualenvs/crucible/bin/activate.csh' /home/vagrant/
 if test -z "`grep 'cd crucible/' /home/vagrant/.cshrc`"; then echo "cd crucible/" >> /home/vagrant/.cshrc ; fi
 SCRIPT
 
+$zfs_script = <<-ZFS
+sysrc zfs_enable="YES"
+service zfs start
+/bin/sh -c 'if ! `zpool list | grep -q "tank"`; then zpool create tank /dev/ada1; fi'
+/bin/sh -c 'if ! `zfs list | grep -q "tank/jails"`; then zfs create -o mountpoint=/usr/local/jails tank/jails; fi'
+ZFS
 
 Vagrant.configure("2") do |config|
 
     config.vm.hostname = "crucible-vagrant"
     config.vm.box = BOX_NAME
-    config.vm.synced_folder ".", "/home/vagrant/crucible", type: "virtualbox", :automount => true
+
+    # Create is needed on the shared folder or the mount fails the first time
+    config.vm.synced_folder ".", "/home/vagrant/crucible", type: "virtualbox", :automount => true, :create => true
 
     config.vm.provider "virtualbox" do |vb|
       vb.cpus = 4
@@ -35,6 +43,7 @@ Vagrant.configure("2") do |config|
     config.ssh.shell = "sh"
     config.ssh.forward_agent = true
     config.vm.guest = :freebsd
+    config.vm.provision "shell", inline: $zfs_script
     config.vm.provision "shell", inline: $script, privileged: false
 
 end

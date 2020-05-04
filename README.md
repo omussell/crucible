@@ -6,7 +6,7 @@ When Pkgbase is released, can also be used for building ZFS Boot Environments.
 
 ## Create a template
 
-A ZFS dataset is created using the base files from FreeBSD. You can change the FreeBSD version in the settings. The files are updated to the latest patch version. 
+A ZFS dataset is created using the base files from FreeBSD. You can change the FreeBSD version in the settings. The files are updated to the latest patch version.
 
 The template package can then be installed into the template. The template package is a FreeBSD package which contains the dependencies and files needded in the template.
 
@@ -20,13 +20,11 @@ The new dataset name needs to be given (when used by CI, this would include the 
 
 ## Start jails
 
-A new jail.conf file is created specifically for this jail, then started using `jail -c -f jail.$HASH.conf`. 
+A new jail.conf file is created specifically for this jail, then started using `jail -c -f jail.$HASH.conf`.
 
-## Build application 
+## Build application
 
 Install dependencies as specified in the meta manifest, build the application using the Makefile, then create a new FreeBSD package containing the dependencies and the application files.
-
-
 
 ## create MANIFEST files
 
